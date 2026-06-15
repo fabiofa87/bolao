@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bolao}
+      POSTGRES_USER: ${POSTGRES_USER:-bolao}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bolao}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bolao} -d ${POSTGRES_DB:-bolao}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-bolao}:${POSTGRES_PASSWORD:-bolao}@db:5432/${POSTGRES_DB:-bolao}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-unsafe-development-key}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-http://localhost:8080}
+      DJANGO_SECURE_COOKIES: ${DJANGO_SECURE_COOKIES:-0}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      FOOTBALL_DATA_API_TOKEN: ${FOOTBALL_DATA_API_TOKEN:-}
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/auth/session/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  scheduler:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-bolao}:${POSTGRES_PASSWORD:-bolao}@db:5432/${POSTGRES_DB:-bolao}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-unsafe-development-key}
+      FOOTBALL_DATA_API_TOKEN: ${FOOTBALL_DATA_API_TOKEN:-}
+    command: python manage.py run_scheduler
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+

@@ -1,0 +1,14 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="default">Gerar link</button>
+  </form>
+  {% if invite_url %}
+    <h2>Link do convite</h2>
+    <p>Envie este link ao participante. Ele não será armazenado nem exibido novamente.</p>
+    <input value="{{ invite_url }}" readonly style="width: 100%; padding: 10px">
+  {% endif %}
+{% endblock %}
+

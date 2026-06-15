@@ -1,0 +1,216 @@
+import csv
+import hashlib
+import io
+from dataclasses import dataclass
+
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.db.models import IntegerField, OuterRef, Subquery, Sum
+from django.db.models.functions import Coalesce
+from django.utils import timezone
+from rest_framework.exceptions import ValidationError
+
+from .models import (
+    Match,
+    PointAdjustment,
+    Prediction,
+    PredictionRevision,
+    ScoringRule,
+)
+
+User = get_user_model()
+
+
+def outcome(home, away):
+    if home == away:
+        return "DRAW"
+    return "HOME" if home > away else "AWAY"
+
+
+def calculate_points(prediction, match, rule=None):
+    if not match.has_result:
+        return 0
+    rule = rule or ScoringRule.current()
+    actual = (match.scoring_home, match.scoring_away)
+    guessed = (prediction.home_score, prediction.away_score)
+
+    if guessed == actual:
+        return rule.exact_score_points
+    if outcome(*guessed) != outcome(*actual):
+        return 0
+
+    points = rule.correct_result_points
+    if outcome(*actual) == "DRAW":
+        return points + rule.wrong_draw_bonus
+
+    winner_index = 0 if actual[0] > actual[1] else 1
+    if guessed[winner_index] == actual[winner_index]:
+        points += rule.winner_goals_bonus
+    return points
+
+
+@transaction.atomic
+def save_prediction(*, user, match_id, home_score, away_score):
+    match = Match.objects.select_for_update().get(pk=match_id)
+    if timezone.now() >= match.lock_at:
+        raise ValidationError({"match": "O prazo para este palpite terminou."})
+
+    prediction, created = Prediction.objects.select_for_update().get_or_create(
+        user=user,
+        match=match,
+        defaults={"home_score": home_score, "away_score": away_score},
+    )
+    if not created:
+        PredictionRevision.objects.create(
+            prediction=prediction,
+            home_score=prediction.home_score,
+            away_score=prediction.away_score,
+            changed_by=user,
+        )
+        prediction.home_score = home_score
+        prediction.away_score = away_score
+        prediction.save(update_fields=["home_score", "away_score", "updated_at"])
+    return prediction
+
+
+@transaction.atomic
+def recalculate_points(match=None):
+    predictions = Prediction.objects.select_related("match")
+    if match is not None:
+        predictions = predictions.filter(match=match)
+    rule = ScoringRule.current()
+    changed = []
+    for prediction in predictions:
+        new_points = calculate_points(prediction, prediction.match, rule)
+        if prediction.points != new_points:
+            prediction.points = new_points
+            changed.append(prediction)
+    if changed:
+        Prediction.objects.bulk_update(changed, ["points"])
+    return len(changed)
+
+
+def build_ranking():
+    prediction_points = (
+        Prediction.objects.filter(user_id=OuterRef("pk"))
+        .values("user_id")
+        .annotate(total=Sum("points"))
+        .values("total")
+    )
+    adjustment_points = (
+        PointAdjustment.objects.filter(user_id=OuterRef("pk"))
+        .values("user_id")
+        .annotate(total=Sum("points"))
+        .values("total")
+    )
+    users = (
+        User.objects.filter(is_active=True, is_staff=False)
+        .annotate(
+            prediction_total=Coalesce(
+                Subquery(prediction_points, output_field=IntegerField()), 0
+            ),
+            adjustment_total=Coalesce(
+                Subquery(adjustment_points, output_field=IntegerField()), 0
+            ),
+        )
+        .order_by("display_name", "id")
+    )
+    rows = []
+    for user in users:
+        prediction_points = user.prediction_total or 0
+        adjustment_points = user.adjustment_total or 0
+        rows.append(
+            {
+                "user_id": user.id,
+                "display_name": user.display_name,
+                "prediction_points": prediction_points,
+                "adjustment_points": adjustment_points,
+                "total_points": prediction_points + adjustment_points,
+            }
+        )
+    rows.sort(key=lambda row: (-row["total_points"], row["display_name"].lower()))
+    previous_points = None
+    previous_rank = 0
+    for index, row in enumerate(rows, start=1):
+        if row["total_points"] != previous_points:
+            previous_rank = index
+            previous_points = row["total_points"]
+        row["rank"] = previous_rank
+    return rows
+
+
+@dataclass
+class ImportRow:
+    line: int
+    name: str
+    email: str
+    points: int | None
+    error: str = ""
+
+
+def parse_initial_scores(content):
+    text = content.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text))
+    required = {"nome", "email", "pontos"}
+    if not reader.fieldnames or not required.issubset(
+        {field.strip().lower() for field in reader.fieldnames}
+    ):
+        raise ValueError("O CSV deve conter as colunas nome,email,pontos.")
+
+    rows = []
+    for line, raw in enumerate(reader, start=2):
+        normalized = {
+            (key or "").strip().lower(): (value or "").strip()
+            for key, value in raw.items()
+        }
+        row = ImportRow(
+            line=line,
+            name=normalized.get("nome", ""),
+            email=normalized.get("email", "").lower(),
+            points=None,
+        )
+        try:
+            row.points = int(normalized.get("pontos", ""))
+        except ValueError:
+            row.error = "Pontuação inválida."
+        if not row.name or "@" not in row.email:
+            row.error = "Nome e e-mail válido são obrigatórios."
+        rows.append(row)
+    return rows
+
+
+@transaction.atomic
+def import_initial_scores(rows, *, created_by):
+    imported = 0
+    for row in rows:
+        if row.error:
+            raise ValueError(f"Linha {row.line}: {row.error}")
+        user, _ = User.objects.get_or_create(
+            email=row.email,
+            defaults={
+                "display_name": row.name,
+                "is_active": True,
+                "username": row.email,
+            },
+        )
+        changed_fields = []
+        if user.display_name != row.name:
+            user.display_name = row.name
+            changed_fields.append("display_name")
+        if not user.is_active:
+            user.is_active = True
+            changed_fields.append("is_active")
+        if changed_fields:
+            user.save(update_fields=changed_fields)
+        import_key = "initial:" + hashlib.sha256(row.email.encode()).hexdigest()
+        PointAdjustment.objects.update_or_create(
+            import_key=import_key,
+            defaults={
+                "user": user,
+                "points": row.points,
+                "reason": "Saldo inicial importado",
+                "created_by": created_by,
+            },
+        )
+        imported += 1
+    return imported

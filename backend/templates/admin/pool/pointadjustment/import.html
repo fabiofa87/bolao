@@ -1,0 +1,30 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="default">Pré-visualizar</button>
+  </form>
+  {% if rows %}
+    <h2>Pré-visualização</h2>
+    <table>
+      <thead><tr><th>Linha</th><th>Nome</th><th>E-mail</th><th>Pontos</th><th>Erro</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td>{{ row.line }}</td><td>{{ row.name }}</td><td>{{ row.email }}</td>
+          <td>{{ row.points }}</td><td>{{ row.error }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if payload %}
+      <form method="post" style="margin-top: 20px">
+        {% csrf_token %}
+        <input type="hidden" name="payload" value="{{ payload }}">
+        <button type="submit" name="confirm" value="1" class="default">Confirmar importação</button>
+      </form>
+    {% endif %}
+  {% endif %}
+{% endblock %}
+

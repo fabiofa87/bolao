@@ -1,0 +1,6 @@
+{% extends "admin/change_list.html" %}
+{% block object-tools-items %}
+  <li><a href="{% url 'admin:issue_invite' %}" class="addlink">Emitir convite</a></li>
+  {{ block.super }}
+{% endblock %}
+
