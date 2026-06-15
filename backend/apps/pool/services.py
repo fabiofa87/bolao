@@ -91,6 +91,22 @@ def recalculate_points(match=None):
 
 
 def build_ranking():
+    correct_result_counts = {}
+    finished_predictions = Prediction.objects.select_related("match").filter(
+        user__is_active=True,
+        user__is_staff=False,
+        match__scoring_home__isnull=False,
+        match__scoring_away__isnull=False,
+    )
+    for prediction in finished_predictions:
+        match = prediction.match
+        if outcome(prediction.home_score, prediction.away_score) == outcome(
+            match.scoring_home, match.scoring_away
+        ):
+            correct_result_counts[prediction.user_id] = (
+                correct_result_counts.get(prediction.user_id, 0) + 1
+            )
+
     prediction_points = (
         Prediction.objects.filter(user_id=OuterRef("pk"))
         .values("user_id")
@@ -125,6 +141,7 @@ def build_ranking():
                 "display_name": user.display_name,
                 "prediction_points": prediction_points,
                 "adjustment_points": adjustment_points,
+                "correct_result_hits": correct_result_counts.get(user.id, 0),
                 "total_points": prediction_points + adjustment_points,
             }
         )

@@ -48,6 +48,7 @@ export type RankingRow = {
   display_name: string;
   prediction_points: number;
   adjustment_points: number;
+  correct_result_hits: number;
   total_points: number;
   rank: number;
 };

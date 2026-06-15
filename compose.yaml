@@ -1,14 +1,16 @@
 services:
   db:
     image: postgres:17-alpine
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-bolao}
-      POSTGRES_USER: ${POSTGRES_USER:-bolao}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bolao}
+      POSTGRES_USER: ${POSTGRES_USER:-pg}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pg}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bolao} -d ${POSTGRES_DB:-bolao}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pg} -d ${POSTGRES_DB:-pg}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -16,7 +18,7 @@ services:
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-bolao}:${POSTGRES_PASSWORD:-bolao}@db:5432/${POSTGRES_DB:-bolao}
+      DATABASE_URL: postgres://${POSTGRES_USER:-pg}:${POSTGRES_PASSWORD:-pg}@db:5432/${POSTGRES_DB:-pg}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-unsafe-development-key}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
@@ -40,7 +42,7 @@ services:
   scheduler:
     build: ./backend
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-bolao}:${POSTGRES_PASSWORD:-bolao}@db:5432/${POSTGRES_DB:-bolao}
+      DATABASE_URL: postgres://${POSTGRES_USER:-pg}:${POSTGRES_PASSWORD:-pg}@db:5432/${POSTGRES_DB:-pg}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-unsafe-development-key}
       FOOTBALL_DATA_API_TOKEN: ${FOOTBALL_DATA_API_TOKEN:-}
     command: python manage.py run_scheduler

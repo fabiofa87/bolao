@@ -37,6 +37,37 @@ export function MatchesPage() {
         </div>
       </div>
 
+      <section className="panel mt-7 rounded-[2rem] p-5 md:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <span className="text-xs font-black uppercase tracking-[0.24em] text-field/55">Regras de pontuação</span>
+            <h3 className="mt-1 text-2xl font-black">Como os pontos são calculados</h3>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl bg-lime/60 p-4">
+              <strong className="block text-xl">PE</strong>
+              <span className="block text-sm font-bold">Placar Exato</span>
+              <span className="mt-1 block text-sm">5 pontos</span>
+            </div>
+            <div className="rounded-2xl bg-white/70 p-4">
+              <strong className="block text-xl">RC</strong>
+              <span className="block text-sm font-bold">Placar Errado e Resultado Certo</span>
+              <span className="mt-1 block text-sm">2 pontos</span>
+            </div>
+            <div className="rounded-2xl bg-white/70 p-4">
+              <strong className="block text-xl">EE</strong>
+              <span className="block text-sm font-bold">Empate com Placar Errado</span>
+              <span className="mt-1 block text-sm">+1 ponto</span>
+            </div>
+            <div className="rounded-2xl bg-white/70 p-4">
+              <strong className="block text-xl">GV</strong>
+              <span className="block text-sm font-bold">Acertou o Gol do Vencedor</span>
+              <span className="mt-1 block text-sm">+1 ponto</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {matches.isLoading && <p className="mt-10">Carregando partidas...</p>}
       {matches.error && <p className="mt-10 text-red-700">{matches.error.message}</p>}
       <div className="mt-9 space-y-10">
