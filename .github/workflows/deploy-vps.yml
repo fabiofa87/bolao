@@ -1,0 +1,36 @@
+name: Deploy VPS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/bolao-copa-2026
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ vars.ENABLE_VPS_DEPLOY == 'true' }}
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            APP_DIR="${{ vars.VPS_APP_DIR || '/opt/bolao' }}"
+            if [ ! -d "$APP_DIR/.git" ]; then
+              mkdir -p "$APP_DIR"
+              git clone https://github.com/fabiofa87/bolao.git "$APP_DIR"
+            fi
+            cd "$APP_DIR"
+            git fetch origin
+            git checkout codex/bolao-copa-2026
+            git reset --hard origin/codex/bolao-copa-2026
+            test -f .env
+            docker compose -f compose.yaml -f compose.prod.yaml up --build -d
+            docker compose -f compose.yaml -f compose.prod.yaml exec -T backend python manage.py migrate
+            docker compose -f compose.yaml -f compose.prod.yaml exec -T backend python manage.py collectstatic --noinput
+

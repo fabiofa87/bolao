@@ -1,5 +1,7 @@
 # Bolão da Copa 2026
 
+> Produção: veja [`deploy/production.md`](deploy/production.md) para hospedar em um VPS com HTTPS automático.
+
 Aplicação privada de palpites para a Copa do Mundo de 2026, com Django Admin,
 API REST, React e sincronização automática dos jogos.
 
@@ -79,4 +81,3 @@ npm run test:e2e
 - O serviço `scheduler` executa a sincronização a cada dez minutos.
 - Uma partida marcada como **ajuste manual** não é alterada pelo provedor.
 - Em mata-mata, a pontuação ignora a disputa de pênaltis.
-
