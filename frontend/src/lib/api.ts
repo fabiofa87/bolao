@@ -10,6 +10,7 @@ declare global {
 }
 
 let csrfToken = "";
+let activeApiBaseUrl = "";
 
 const getCookie = (name: string) => {
   const value = document.cookie
@@ -28,9 +29,39 @@ const getApiBaseUrl = () => {
   return "/api";
 };
 
-const buildApiUrl = (path: string) => {
-  const base = getApiBaseUrl();
-  return `${base}${path}`;
+const getFallbackApiBaseUrl = () => {
+  const config = window.__APP_CONFIG__;
+  const backendUrl = trimQuotes(config?.backendUrl?.trim() ?? "");
+  if (!backendUrl || backendUrl === "backend:8000") return "";
+  const scheme = trimQuotes(config?.backendScheme?.trim() || "https");
+  return `${scheme}://${backendUrl.replace(/\/$/, "")}/api`;
+};
+
+const getApiBaseUrls = () => {
+  const primary = activeApiBaseUrl || getApiBaseUrl();
+  const fallback = getFallbackApiBaseUrl();
+  return [primary, fallback].filter(
+    (base, index, bases): base is string => Boolean(base) && bases.indexOf(base) === index
+  );
+};
+
+const buildApiUrl = (base: string, path: string) => `${base}${path}`;
+
+const fetchWithApiFallback = async (path: string, options: RequestInit = {}) => {
+  const bases = getApiBaseUrls();
+  let networkError: unknown = null;
+
+  for (const base of bases) {
+    try {
+      const response = await fetch(buildApiUrl(base, path), options);
+      activeApiBaseUrl = base;
+      return response;
+    } catch (error) {
+      networkError = error;
+    }
+  }
+
+  throw networkError;
 };
 
 export class ApiError extends Error {
@@ -51,13 +82,13 @@ export class ApiError extends Error {
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const method = options.method?.toUpperCase() ?? "GET";
   if (method !== "GET" && !csrfToken && !getCookie("csrftoken")) {
-    const session = await fetch(buildApiUrl("/auth/session/"), {
+    const session = await fetchWithApiFallback("/auth/session/", {
       credentials: "include"
     });
     const data = await session.json().catch(() => null);
     csrfToken = data?.csrf_token ?? "";
   }
-  const response = await fetch(buildApiUrl(path), {
+  const response = await fetchWithApiFallback(path, {
     credentials: "include",
     ...options,
     headers: {
