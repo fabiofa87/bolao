@@ -94,6 +94,9 @@ https://bolao-production-aef5.up.railway.app/api
 O `BACKEND_URL` continua sendo usado pelo Nginx para encaminhar `/api/`,
 `/admin/` e `/static/` ao backend. Nao defina `API_BASE_URL` no Railway, a menos
 que voce queira forcar propositalmente outro dominio de API.
+No proxy, o Nginx envia `Host: BACKEND_URL` para o Railway rotear a requisicao
+ao servico correto, mas preserva o dominio publico original em
+`X-Forwarded-Host`.
 
 Com essas variaveis, o Nginx do frontend encaminha:
 
