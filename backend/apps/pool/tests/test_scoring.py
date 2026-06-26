@@ -41,3 +41,19 @@ def test_scoring_matrix(prediction, guess, result, expected):
     prediction.match.scoring_home, prediction.match.scoring_away = result
     assert calculate_points(prediction, prediction.match, ScoringRule.current()) == expected
 
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("stage", "expected"),
+    [
+        ("GROUP_STAGE", 5),
+        ("LAST_32", 10),
+        ("LAST_16", 15),
+        ("QUARTER_FINALS", 20),
+        ("SEMI_FINALS", 25),
+        ("FINAL", 50),
+    ],
+)
+def test_knockout_stage_multipliers(prediction, stage, expected):
+    prediction.match.stage = stage
+    assert calculate_points(prediction, prediction.match, ScoringRule.current()) == expected

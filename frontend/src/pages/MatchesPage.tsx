@@ -6,7 +6,23 @@ import { api } from "../lib/api";
 import { formatDate } from "../lib/format";
 import type { Match } from "../types";
 
-type ResultsTab = "upcoming" | "all" | "chat";
+type ResultsTab = "upcoming" | "all" | "rules" | "chat";
+
+const baseRules = [
+  ["PE", "Placar Exato", "5 pontos"],
+  ["RC", "Resultado certo com placar errado", "2 pontos"],
+  ["EE", "Empate certo com placar errado", "3 pontos"],
+  ["GV", "Vitoria certa com gols exatos do vencedor", "3 pontos"]
+];
+
+const stageMultipliers = [
+  ["Fase de grupos e terceiro lugar", "1x"],
+  ["16 avos de final", "2x"],
+  ["Oitavas de final", "3x"],
+  ["Quartas de final", "4x"],
+  ["Semifinal", "5x"],
+  ["Final", "10x"]
+];
 
 export function MatchesPage() {
   const [activeTab, setActiveTab] = useState<ResultsTab>("upcoming");
@@ -49,6 +65,12 @@ export function MatchesPage() {
             Todos
           </button>
           <button
+            onClick={() => setActiveTab("rules")}
+            className={`rounded-full px-4 py-2 text-sm font-bold ${activeTab === "rules" ? "bg-white shadow" : ""}`}
+          >
+            Regras
+          </button>
+          <button
             onClick={() => setActiveTab("chat")}
             className={`rounded-full px-4 py-2 text-sm font-bold ${activeTab === "chat" ? "bg-white shadow" : ""}`}
           >
@@ -59,41 +81,58 @@ export function MatchesPage() {
 
       {activeTab === "chat" ? (
         <DailyChatPanel />
-      ) : (
-        <>
-          <section className="panel mt-7 rounded-[2rem] p-5 md:p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <span className="text-xs font-black uppercase tracking-[0.24em] text-field/55">
-                  Regras de pontuacao
-                </span>
-                <h3 className="mt-1 text-2xl font-black">Como os pontos sao calculados</h3>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-2xl bg-lime/60 p-4">
-                  <strong className="block text-xl">PE</strong>
-                  <span className="block text-sm font-bold">Placar Exato</span>
-                  <span className="mt-1 block text-sm">5 pontos</span>
-                </div>
-                <div className="rounded-2xl bg-white/70 p-4">
-                  <strong className="block text-xl">RC</strong>
-                  <span className="block text-sm font-bold">Placar Errado e Resultado Certo</span>
-                  <span className="mt-1 block text-sm">2 pontos</span>
-                </div>
-                <div className="rounded-2xl bg-white/70 p-4">
-                  <strong className="block text-xl">EE</strong>
-                  <span className="block text-sm font-bold">Empate com Placar Errado</span>
-                  <span className="mt-1 block text-sm">+1 ponto</span>
-                </div>
-                <div className="rounded-2xl bg-white/70 p-4">
-                  <strong className="block text-xl">GV</strong>
-                  <span className="block text-sm font-bold">Acertou o Gol do Vencedor</span>
-                  <span className="mt-1 block text-sm">+1 ponto</span>
-                </div>
+      ) : activeTab === "rules" ? (
+        <section className="panel mt-7 rounded-[2rem] p-5 md:p-7">
+          <div>
+            <span className="text-xs font-black uppercase tracking-[0.24em] text-field/55">
+              Regras de pontuacao
+            </span>
+            <h3 className="mt-1 text-3xl font-black">Pontuacao sem conversa fiada</h3>
+            <p className="mt-2 max-w-2xl text-sm text-black/55">
+              Primeiro calculamos os pontos-base do palpite. Depois multiplicamos pela fase da partida.
+            </p>
+          </div>
+
+          <div className="mt-7 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-3xl bg-white/70 p-5">
+              <h4 className="text-xl font-black">Pontos-base</h4>
+              <div className="mt-4 space-y-3">
+                {baseRules.map(([code, label, points]) => (
+                  <div key={code} className="flex items-center justify-between gap-4 rounded-2xl bg-paper p-4">
+                    <div>
+                      <strong className="mr-2 text-lg">{code}</strong>
+                      <span className="font-bold">{label}</span>
+                    </div>
+                    <span className="text-sm font-black text-field">{points}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          </section>
 
+            <div className="rounded-3xl bg-white/70 p-5">
+              <h4 className="text-xl font-black">Multiplicador por fase</h4>
+              <div className="mt-4 space-y-3">
+                {stageMultipliers.map(([stage, multiplier]) => (
+                  <div key={stage} className="flex items-center justify-between gap-4 rounded-2xl bg-paper p-4">
+                    <span className="font-bold">{stage}</span>
+                    <span className="rounded-full bg-lime px-3 py-1 text-sm font-black text-ink">
+                      {multiplier}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-3xl bg-field p-5 text-white">
+            <strong className="block">Exemplo</strong>
+            <p className="mt-1 text-sm text-white/75">
+              Placar exato na final vale 5 x 10 = 50 pontos. Resultado certo nas quartas vale 2 x 4 = 8 pontos.
+            </p>
+          </div>
+        </section>
+      ) : (
+        <>
           {matches.isLoading && <p className="mt-10">Carregando partidas...</p>}
           {matches.error && <p className="mt-10 text-red-700">{matches.error.message}</p>}
           <div className="mt-9 space-y-10">

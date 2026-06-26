@@ -9,8 +9,6 @@ from django.urls import path, reverse
 from .models import (
     Match,
     PointAdjustment,
-    Prediction,
-    PredictionRevision,
     ScoringRule,
     SyncRun,
     Team,
@@ -71,31 +69,6 @@ class MatchAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         recalculate_points(obj)
-
-
-class PredictionRevisionInline(admin.TabularInline):
-    model = PredictionRevision
-    extra = 0
-    readonly_fields = ["home_score", "away_score", "changed_at", "changed_by"]
-    can_delete = False
-
-
-@admin.register(Prediction)
-class PredictionAdmin(admin.ModelAdmin):
-    list_display = ["user", "match", "home_score", "away_score", "points", "updated_at"]
-    search_fields = ["user__display_name", "user__email"]
-    list_filter = ["match__stage"]
-    readonly_fields = ["points", "submitted_at", "updated_at"]
-    inlines = [PredictionRevisionInline]
-
-
-@admin.register(PredictionRevision)
-class PredictionRevisionAdmin(admin.ModelAdmin):
-    list_display = ["prediction", "home_score", "away_score", "changed_by", "changed_at"]
-    readonly_fields = ["prediction", "home_score", "away_score", "changed_by", "changed_at"]
-
-    def has_add_permission(self, request):
-        return False
 
 
 class CsvImportForm(forms.Form):
@@ -177,4 +150,3 @@ class SyncRunAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
-
