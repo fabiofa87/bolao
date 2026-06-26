@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useParams } from "react-router-dom";
 import { z } from "zod";
+import { getMatchStatusLabel, isExactHit, isMatchLive } from "../components/MatchCard";
 import { TeamMark } from "../components/TeamMark";
 import { api } from "../lib/api";
 import { formatDate, formatStage, formatTime } from "../lib/format";
@@ -44,27 +45,44 @@ export function MatchDetailPage() {
   });
 
   if (match.isLoading) return <p>Carregando partida...</p>;
-  if (!match.data) return <p>Partida não encontrada.</p>;
+  if (!match.data) return <p>Partida nao encontrada.</p>;
   const data = match.data;
   const hasResult = data.scoring_home !== null;
+  const live = isMatchLive(data);
+  const exactHit = isExactHit(data);
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link to="/" className="text-sm font-bold text-field/60">← Voltar aos jogos</Link>
+      <Link to="/" className="text-sm font-bold text-field/60">
+        ← Voltar aos jogos
+      </Link>
       <article className="panel mt-5 overflow-hidden rounded-[2rem]">
         <header className="bg-field p-6 text-white md:p-9">
           <div className="flex justify-between gap-4 text-sm text-white/60">
             <span>{formatStage(data.stage)}</span>
-            <span>{formatDate(data.kickoff_at)} · {formatTime(data.kickoff_at)}</span>
+            <span>
+              {formatDate(data.kickoff_at)} · {formatTime(data.kickoff_at)}
+            </span>
+          </div>
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm font-bold">
+            {live && <span className="h-2 w-2 animate-pulse rounded-full bg-lime" />}
+            {getMatchStatusLabel(data)}
           </div>
           <div className="mt-8 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <div className="flex justify-end"><TeamMark team={data.home_team} /></div>
+            <div className="flex justify-end">
+              <TeamMark team={data.home_team} />
+            </div>
             <span className="text-sm font-black text-lime">X</span>
             <TeamMark team={data.away_team} />
           </div>
           {hasResult && (
             <div className="mt-7 text-center text-5xl font-black">
               {data.scoring_home} <span className="text-white/25">:</span> {data.scoring_away}
+              {exactHit && (
+                <div className="mx-auto mt-4 w-fit rounded-full bg-lime px-4 py-2 text-sm font-black text-ink">
+                  ✓ LT na lata
+                </div>
+              )}
             </div>
           )}
         </header>
@@ -74,12 +92,24 @@ export function MatchDetailPage() {
             <form onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
               <h2 className="text-2xl font-black">Seu palpite</h2>
               <p className="mt-1 text-sm text-black/55">
-                Você pode editar até {formatTime(data.lock_at)}.
+                Voce pode editar ate {formatTime(data.lock_at)}.
               </p>
               <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-                <input aria-label={`Gols de ${data.home_team.name}`} type="number" min="0" {...form.register("home_score")} className="w-full rounded-2xl border border-black/15 bg-white p-4 text-center text-3xl font-black" />
+                <input
+                  aria-label={`Gols de ${data.home_team.name}`}
+                  type="number"
+                  min="0"
+                  {...form.register("home_score")}
+                  className="w-full rounded-2xl border border-black/15 bg-white p-4 text-center text-3xl font-black"
+                />
                 <span className="font-black text-black/25">X</span>
-                <input aria-label={`Gols de ${data.away_team.name}`} type="number" min="0" {...form.register("away_score")} className="w-full rounded-2xl border border-black/15 bg-white p-4 text-center text-3xl font-black" />
+                <input
+                  aria-label={`Gols de ${data.away_team.name}`}
+                  type="number"
+                  min="0"
+                  {...form.register("away_score")}
+                  className="w-full rounded-2xl border border-black/15 bg-white p-4 text-center text-3xl font-black"
+                />
               </div>
               {mutation.error && <p className="mt-4 text-sm text-red-700">{mutation.error.message}</p>}
               {mutation.isSuccess && <p className="mt-4 text-sm font-bold text-field">Palpite salvo.</p>}
@@ -110,4 +140,3 @@ export function MatchDetailPage() {
     </div>
   );
 }
-

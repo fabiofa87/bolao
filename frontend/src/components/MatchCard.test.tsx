@@ -30,5 +30,37 @@ describe("MatchCard", () => {
     expect(screen.getByText("Toque para enviar seu palpite.")).toBeInTheDocument();
     expect(screen.getByText("Brasil")).toBeInTheDocument();
   });
-});
 
+  it("mostra quando a partida esta em andamento", () => {
+    render(<MemoryRouter><MatchCard match={{ ...match, status: "IN_PLAY", is_locked: true }} /></MemoryRouter>);
+    expect(screen.getByText("Em andamento")).toBeInTheDocument();
+  });
+
+  it("mostra quando a partida terminou e o usuario acertou na lata", () => {
+    render(
+      <MemoryRouter>
+        <MatchCard
+          match={{
+            ...match,
+            status: "FINISHED",
+            is_locked: true,
+            scoring_home: 2,
+            scoring_away: 1,
+            my_prediction: {
+              id: 1,
+              user: 1,
+              user_name: "Fabio",
+              home_score: 2,
+              away_score: 1,
+              points: 5,
+              submitted_at: "2026-06-20T18:00:00Z",
+              updated_at: "2026-06-20T18:00:00Z"
+            }
+          }}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByText("Encerrado")).toBeInTheDocument();
+    expect(screen.getByText("✓ LT")).toBeInTheDocument();
+  });
+});

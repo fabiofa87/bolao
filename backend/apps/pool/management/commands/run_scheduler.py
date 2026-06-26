@@ -7,7 +7,7 @@ from apps.pool.sync import sync_world_cup
 
 
 class Command(BaseCommand):
-    help = "Executa a sincronização da Copa a cada dez minutos."
+    help = "Executa a sincronizacao da Copa a cada cinco minutos."
 
     def handle(self, *args, **options):
         last_prune_date = None
@@ -18,7 +18,7 @@ class Command(BaseCommand):
                     call_command("prune_daily_chat")
                     last_prune_date = today
                 sync_world_cup()
-                self.stdout.write("Sincronização concluída.")
+                self.stdout.write("Sincronizacao concluida.")
             except Exception as exc:
-                self.stderr.write(f"Sincronização falhou: {exc}")
-            time.sleep(600)
+                self.stderr.write(f"Sincronizacao falhou: {exc}")
+            time.sleep(300)
