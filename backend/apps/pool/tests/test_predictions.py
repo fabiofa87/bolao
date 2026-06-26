@@ -6,7 +6,7 @@ from django.utils import timezone
 from freezegun import freeze_time
 from rest_framework.exceptions import ValidationError
 
-from apps.pool.models import Match, PredictionRevision, Team
+from apps.pool.models import Match, PredictionRevision, ScoringRule, Team
 from apps.pool.services import save_prediction
 
 User = get_user_model()
@@ -42,3 +42,9 @@ def test_prediction_locks_exactly_at_deadline(setup_match):
         with pytest.raises(ValidationError):
             save_prediction(user=user, match_id=match.id, home_score=1, away_score=0)
 
+
+@pytest.mark.django_db
+def test_default_lock_deadline_is_five_minutes_before_kickoff(setup_match):
+    _, match = setup_match
+    assert ScoringRule.current().lock_minutes == 5
+    assert match.lock_at == match.kickoff_at - timedelta(minutes=5)

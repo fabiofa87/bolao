@@ -11,7 +11,7 @@ class ScoringRule(models.Model):
     correct_result_points = models.PositiveSmallIntegerField(default=2)
     wrong_draw_bonus = models.PositiveSmallIntegerField(default=1)
     winner_goals_bonus = models.PositiveSmallIntegerField(default=1)
-    lock_minutes = models.PositiveSmallIntegerField(default=15)
+    lock_minutes = models.PositiveSmallIntegerField(default=5)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -180,4 +180,3 @@ class SyncRun(models.Model):
         ordering = ["-started_at"]
         verbose_name = "sincronização"
         verbose_name_plural = "sincronizações"
-

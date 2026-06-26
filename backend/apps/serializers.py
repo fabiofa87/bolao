@@ -96,9 +96,7 @@ class MatchSerializer(serializers.ModelSerializer):
         return PredictionSerializer(prediction).data if prediction else None
 
     def get_predictions(self, obj):
-        if not obj.is_locked:
-            return []
-        return PredictionSerializer(obj.predictions.all(), many=True).data
+        return []
 
 
 class PredictionInputSerializer(serializers.Serializer):

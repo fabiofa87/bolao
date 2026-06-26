@@ -150,7 +150,7 @@ def test_shared_invite_can_register_multiple_users_in_group():
 
 
 @pytest.mark.django_db
-def test_other_predictions_are_hidden_until_lock():
+def test_other_predictions_are_always_hidden():
     ana = User.objects.create_user(
         email="ana@example.com", password="senha-segura", display_name="Ana"
     )
@@ -174,7 +174,8 @@ def test_other_predictions_are_hidden_until_lock():
     locked_response = client.get(f"/api/matches/{match.id}/")
 
     assert open_response.data["predictions"] == []
-    assert len(locked_response.data["predictions"]) == 2
+    assert locked_response.data["predictions"] == []
+    assert locked_response.data["my_prediction"]["home_score"] == 2
 
 
 @pytest.mark.django_db

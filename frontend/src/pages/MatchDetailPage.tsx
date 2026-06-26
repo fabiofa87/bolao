@@ -119,19 +119,22 @@ export function MatchDetailPage() {
             </form>
           ) : (
             <div>
-              <h2 className="text-2xl font-black">Palpites da turma</h2>
-              <p className="mt-1 text-sm text-black/55">O prazo encerrou e os palpites foram revelados.</p>
-              <div className="mt-6 divide-y divide-black/8">
-                {data.predictions.map((prediction) => (
-                  <div key={prediction.id} className="flex items-center justify-between py-4">
-                    <span className="font-bold">{prediction.user_name}</span>
-                    <span className="rounded-full bg-black/5 px-4 py-2 font-black">
-                      {prediction.home_score} x {prediction.away_score}
-                      {hasResult && <small className="ml-2 text-field/55">{prediction.points} pts</small>}
+              <h2 className="text-2xl font-black">Palpite fechado</h2>
+              <p className="mt-1 text-sm text-black/55">
+                O prazo de edicao encerrou. Os palpites dos outros participantes ficam ocultos.
+              </p>
+              <div className="mt-6 rounded-3xl bg-black/5 p-5">
+                {data.my_prediction ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-bold">Seu palpite</span>
+                    <span className="rounded-full bg-white px-4 py-2 font-black">
+                      {data.my_prediction.home_score} x {data.my_prediction.away_score}
+                      {hasResult && <small className="ml-2 text-field/55">{data.my_prediction.points} pts</small>}
                     </span>
                   </div>
-                ))}
-                {!data.predictions.length && <p className="py-5 text-black/50">Nenhum palpite enviado.</p>}
+                ) : (
+                  <p className="text-black/50">Voce nao enviou palpite para esta partida.</p>
+                )}
               </div>
             </div>
           )}
