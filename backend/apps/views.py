@@ -1,8 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.core.cache import cache
-from django.core import signing
-from django.middleware.csrf import get_token
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -14,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .accounts.models import Invite, PoolGroup
+from .csrf import api_csrf_is_valid, signed_csrf_token
 from .pool.models import Match
 from .pool.services import build_ranking, save_prediction
 from .serializers import (
@@ -27,7 +26,6 @@ from .serializers import (
 )
 
 User = get_user_model()
-CSRF_SIGNING_SALT = "bolao.api.csrf"
 
 
 def _client_ip(request):
@@ -35,25 +33,10 @@ def _client_ip(request):
     return forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR", "")
 
 
-def _signed_csrf_token(request):
-    return signing.dumps(get_token(request), salt=CSRF_SIGNING_SALT)
-
-
-def _api_csrf_is_valid(request):
-    token = request.headers.get("X-CSRFToken", "")
-    if not token:
-        return False
-    try:
-        signing.loads(token, salt=CSRF_SIGNING_SALT, max_age=60 * 60 * 24)
-        return True
-    except signing.BadSignature:
-        return False
-
-
 class ApiCsrfMixin:
     def dispatch(self, request, *args, **kwargs):
         if request.method not in ("GET", "HEAD", "OPTIONS", "TRACE"):
-            if not _api_csrf_is_valid(request):
+            if not api_csrf_is_valid(request):
                 return JsonResponse(
                     {"detail": "Token CSRF invalido ou ausente."},
                     status=status.HTTP_403_FORBIDDEN,
@@ -69,7 +52,7 @@ class SessionView(APIView):
         return Response(
             {
                 "authenticated": request.user.is_authenticated,
-                "csrf_token": _signed_csrf_token(request),
+                "csrf_token": signed_csrf_token(request),
                 "user": UserSerializer(request.user).data
                 if request.user.is_authenticated
                 else None,

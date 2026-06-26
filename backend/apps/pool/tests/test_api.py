@@ -175,3 +175,35 @@ def test_other_predictions_are_hidden_until_lock():
 
     assert open_response.data["predictions"] == []
     assert len(locked_response.data["predictions"]) == 2
+
+
+@pytest.mark.django_db
+def test_prediction_endpoint_accepts_signed_csrf_token():
+    user = User.objects.create_user(
+        email="ana@example.com", password="senha-segura", display_name="Ana"
+    )
+    match = Match.objects.create(
+        stage="GROUP_STAGE",
+        kickoff_at=timezone.now() + timedelta(hours=1),
+        home_team=Team.objects.create(name="Brasil"),
+        away_team=Team.objects.create(name="Japao"),
+    )
+    client = APIClient(enforce_csrf_checks=True)
+    session = client.get("/api/auth/session/")
+    csrf_token = session.data["csrf_token"]
+    assert client.login(email="ana@example.com", password="senha-segura")
+
+    rejected = client.put(
+        f"/api/matches/{match.id}/prediction/",
+        {"home_score": 2, "away_score": 0},
+        format="json",
+    )
+    accepted = client.put(
+        f"/api/matches/{match.id}/prediction/",
+        {"home_score": 2, "away_score": 0},
+        format="json",
+        HTTP_X_CSRFTOKEN=csrf_token,
+    )
+
+    assert rejected.status_code == 403
+    assert accepted.status_code == 200
