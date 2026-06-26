@@ -27,10 +27,19 @@ button, input {
   font: inherit;
 }
 
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 .panel {
   border: 1px solid rgba(7, 28, 23, 0.12);
   background: rgba(255, 255, 255, 0.8);
   box-shadow: 0 18px 50px rgba(7, 28, 23, 0.08);
   backdrop-filter: blur(12px);
 }
-
