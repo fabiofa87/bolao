@@ -153,3 +153,31 @@ class Invite(models.Model):
             return f"Convite compartilhado - {self.pool_group}"
         return f"{self.display_name} <{self.email}>"
 
+
+class DailyChatMessage(models.Model):
+    pool_group = models.ForeignKey(
+        PoolGroup,
+        on_delete=models.CASCADE,
+        related_name="chat_messages",
+        verbose_name="grupo de bolao",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="chat_messages",
+        verbose_name="usuario",
+    )
+    body = models.TextField("mensagem", max_length=500)
+    chat_date = models.DateField("data do chat")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [
+            models.Index(fields=["pool_group", "chat_date", "created_at"]),
+        ]
+        verbose_name = "mensagem do chat diario"
+        verbose_name_plural = "mensagens do chat diario"
+
+    def __str__(self):
+        return f"{self.user} em {self.pool_group}: {self.body[:40]}"

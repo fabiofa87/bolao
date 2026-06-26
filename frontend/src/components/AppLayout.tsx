@@ -4,6 +4,7 @@ import { useSession } from "../hooks/useSession";
 const links = [
   { to: "/", label: "Jogos" },
   { to: "/ranking", label: "Ranking" },
+  { to: "/chat", label: "Chat" },
   { to: "/perfil", label: "Perfil" }
 ];
 
@@ -44,7 +45,7 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-black/10 bg-white/95 px-3 py-2 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-black/10 bg-white/95 px-3 py-2 backdrop-blur md:hidden">
         {links.map((link) => (
           <NavLink
             key={link.to}
@@ -62,4 +63,3 @@ export function AppLayout() {
     </div>
   );
 }
-

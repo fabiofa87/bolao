@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from .accounts.models import DailyChatMessage, PoolGroup
 from .pool.models import Match, Prediction, Team
 
 User = get_user_model()
@@ -10,6 +11,30 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "email", "display_name"]
+
+
+class PoolGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PoolGroup
+        fields = ["id", "name", "slug"]
+
+
+class DailyChatMessageSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source="user.display_name", read_only=True)
+
+    class Meta:
+        model = DailyChatMessage
+        fields = ["id", "pool_group", "user", "user_name", "body", "chat_date", "created_at"]
+
+
+class DailyChatMessageInputSerializer(serializers.Serializer):
+    body = serializers.CharField(max_length=500, trim_whitespace=True)
+    pool_group = serializers.IntegerField(required=False)
+
+    def validate_body(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("Mensagem vazia.")
+        return value.strip()
 
 
 class TeamSerializer(serializers.ModelSerializer):

@@ -11,13 +11,15 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .accounts.models import Invite, PoolGroup
+from .accounts.models import DailyChatMessage, Invite, PoolGroup
 from .csrf import api_csrf_is_valid, signed_csrf_token
 from .pool.models import Match
 from .pool.services import build_ranking, save_prediction
 from .serializers import (
     InviteActivationSerializer,
     InviteInfoSerializer,
+    DailyChatMessageInputSerializer,
+    DailyChatMessageSerializer,
     LoginSerializer,
     MatchSerializer,
     PredictionInputSerializer,
@@ -231,3 +233,60 @@ class RankingView(APIView):
 class ProfileView(APIView):
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+class DailyChatView(APIView):
+    def get_user_groups(self, request):
+        return PoolGroup.objects.filter(users=request.user, is_active=True).order_by("name")
+
+    def get_selected_group(self, request, groups):
+        group_id = request.query_params.get("pool_group")
+        if group_id:
+            return get_object_or_404(groups, pk=group_id)
+        return groups.first()
+
+    def get(self, request):
+        today = timezone.localdate()
+        groups = self.get_user_groups(request)
+        group = self.get_selected_group(request, groups)
+        if group is None:
+            return Response(
+                {"groups": [], "selected_group": None, "chat_date": today, "messages": []}
+            )
+        messages = DailyChatMessage.objects.filter(
+            pool_group=group,
+            chat_date=today,
+        ).select_related("user")
+        return Response(
+            {
+                "groups": [
+                    {"id": item.id, "name": item.name, "slug": item.slug}
+                    for item in groups
+                ],
+                "selected_group": {"id": group.id, "name": group.name, "slug": group.slug},
+                "chat_date": today,
+                "messages": DailyChatMessageSerializer(messages, many=True).data,
+            }
+        )
+
+    def post(self, request):
+        serializer = DailyChatMessageInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        groups = self.get_user_groups(request)
+        pool_group_id = serializer.validated_data.get("pool_group")
+        if pool_group_id:
+            group = get_object_or_404(groups, pk=pool_group_id)
+        else:
+            group = groups.first()
+        if group is None:
+            return Response(
+                {"detail": "Voce nao pertence a nenhum grupo de bolao."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        message = DailyChatMessage.objects.create(
+            pool_group=group,
+            user=request.user,
+            body=serializer.validated_data["body"],
+            chat_date=timezone.localdate(),
+        )
+        return Response(DailyChatMessageSerializer(message).data, status=status.HTTP_201_CREATED)

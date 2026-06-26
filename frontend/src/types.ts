@@ -53,3 +53,26 @@ export type RankingRow = {
   rank: number;
 };
 
+export type PoolGroup = {
+  id: number;
+  name: string;
+  slug: string;
+};
+
+export type ChatMessage = {
+  id: number;
+  pool_group: number;
+  user: number;
+  user_name: string;
+  body: string;
+  chat_date: string;
+  created_at: string;
+};
+
+export type DailyChat = {
+  groups: PoolGroup[];
+  selected_group: PoolGroup | null;
+  chat_date: string;
+  messages: ChatMessage[];
+};
+

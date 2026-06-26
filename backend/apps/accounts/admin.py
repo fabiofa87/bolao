@@ -6,7 +6,7 @@ from django.shortcuts import render
 from django.urls import path
 from django.utils.text import slugify
 
-from .models import Invite, PoolGroup, User
+from .models import DailyChatMessage, Invite, PoolGroup, User
 
 
 @admin.register(PoolGroup)
@@ -172,3 +172,14 @@ class InviteAdmin(admin.ModelAdmin):
             return group
         return form.cleaned_data.get("pool_group")
 
+
+@admin.register(DailyChatMessage)
+class DailyChatMessageAdmin(admin.ModelAdmin):
+    list_display = ["pool_group", "user", "chat_date", "created_at", "short_body"]
+    list_filter = ["pool_group", "chat_date"]
+    search_fields = ["body", "user__display_name", "user__email", "pool_group__name"]
+    readonly_fields = ["created_at"]
+
+    @admin.display(description="Mensagem")
+    def short_body(self, obj):
+        return obj.body[:80]
