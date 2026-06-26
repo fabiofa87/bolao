@@ -18,7 +18,7 @@ def test_login_requires_csrf_token():
     )
     client = APIClient(enforce_csrf_checks=True)
     response = client.get("/api/auth/session/")
-    csrf_token = response.cookies["csrftoken"].value
+    csrf_token = response.data["csrf_token"]
 
     rejected = client.post(
         "/api/auth/login/",
@@ -45,7 +45,7 @@ def test_invite_can_only_be_used_once():
     )
     client = APIClient(enforce_csrf_checks=True)
     response = client.get("/api/auth/session/")
-    csrf_token = response.cookies["csrftoken"].value
+    csrf_token = response.data["csrf_token"]
     payload = {"token": token, "display_name": "Bia", "password": "senha-segura"}
 
     first = client.post(
@@ -53,7 +53,7 @@ def test_invite_can_only_be_used_once():
     )
     client.logout()
     response = client.get("/api/auth/session/")
-    csrf_token = response.cookies["csrftoken"].value
+    csrf_token = response.data["csrf_token"]
     second = client.post(
         "/api/auth/activate/", payload, format="json", HTTP_X_CSRFTOKEN=csrf_token
     )
@@ -75,7 +75,7 @@ def test_shared_invite_can_register_multiple_users_in_group():
     )
     client = APIClient(enforce_csrf_checks=True)
     response = client.get("/api/auth/session/")
-    csrf_token = response.cookies["csrftoken"].value
+    csrf_token = response.data["csrf_token"]
 
     info = client.get(f"/api/auth/invite/?token={token}")
     first = client.post(
@@ -91,7 +91,7 @@ def test_shared_invite_can_register_multiple_users_in_group():
     )
     client.logout()
     response = client.get("/api/auth/session/")
-    csrf_token = response.cookies["csrftoken"].value
+    csrf_token = response.data["csrf_token"]
     second = client.post(
         "/api/auth/activate/",
         {
@@ -105,7 +105,7 @@ def test_shared_invite_can_register_multiple_users_in_group():
     )
     client.logout()
     response = client.get("/api/auth/session/")
-    csrf_token = response.cookies["csrftoken"].value
+    csrf_token = response.data["csrf_token"]
     third = client.post(
         "/api/auth/activate/",
         {

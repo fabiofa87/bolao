@@ -1,12 +1,14 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.core.cache import cache
+from django.core import signing
 from django.middleware.csrf import get_token
 from django.db import transaction
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -25,11 +27,38 @@ from .serializers import (
 )
 
 User = get_user_model()
+CSRF_SIGNING_SALT = "bolao.api.csrf"
 
 
 def _client_ip(request):
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
     return forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR", "")
+
+
+def _signed_csrf_token(request):
+    return signing.dumps(get_token(request), salt=CSRF_SIGNING_SALT)
+
+
+def _api_csrf_is_valid(request):
+    token = request.headers.get("X-CSRFToken", "")
+    if not token:
+        return False
+    try:
+        signing.loads(token, salt=CSRF_SIGNING_SALT, max_age=60 * 60 * 24)
+        return True
+    except signing.BadSignature:
+        return False
+
+
+class ApiCsrfMixin:
+    def dispatch(self, request, *args, **kwargs):
+        if request.method not in ("GET", "HEAD", "OPTIONS", "TRACE"):
+            if not _api_csrf_is_valid(request):
+                return JsonResponse(
+                    {"detail": "Token CSRF invalido ou ausente."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        return super().dispatch(request, *args, **kwargs)
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
@@ -40,7 +69,7 @@ class SessionView(APIView):
         return Response(
             {
                 "authenticated": request.user.is_authenticated,
-                "csrf_token": get_token(request),
+                "csrf_token": _signed_csrf_token(request),
                 "user": UserSerializer(request.user).data
                 if request.user.is_authenticated
                 else None,
@@ -48,8 +77,8 @@ class SessionView(APIView):
         )
 
 
-@method_decorator(csrf_protect, name="dispatch")
-class LoginView(APIView):
+@method_decorator(csrf_exempt, name="dispatch")
+class LoginView(ApiCsrfMixin, APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -114,8 +143,8 @@ class InviteInfoView(APIView):
         )
 
 
-@method_decorator(csrf_protect, name="dispatch")
-class ActivateInviteView(APIView):
+@method_decorator(csrf_exempt, name="dispatch")
+class ActivateInviteView(ApiCsrfMixin, APIView):
     permission_classes = [permissions.AllowAny]
 
     @transaction.atomic
