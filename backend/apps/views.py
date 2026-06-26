@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.core.cache import cache
+from django.middleware.csrf import get_token
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -39,6 +40,7 @@ class SessionView(APIView):
         return Response(
             {
                 "authenticated": request.user.is_authenticated,
+                "csrf_token": get_token(request),
                 "user": UserSerializer(request.user).data
                 if request.user.is_authenticated
                 else None,

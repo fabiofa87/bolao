@@ -75,11 +75,21 @@ FORWARDED_PROTO=https
 
 Atencao: a variavel correta e `BACKEND_SCHEME`, nao `BACKEND_SCHEMA`.
 Nao cadastre `PORT` manualmente no Railway; a plataforma injeta essa variavel.
+Nao coloque aspas nos valores das variaveis.
+
+O frontend tambem gera `/config.js` em runtime. Com as variaveis acima, o React
+chama a API diretamente em:
+
+```text
+https://bolao-production-a245.up.railway.app/api
+```
+
+Isso evita depender do proxy `/api` do Nginx entre dois servicos Railway.
 
 Com essas variaveis, o Nginx do frontend encaminha:
 
 - `/api/` para o backend
-- `/admin/` para o Django Admin
+- `/admin/` redireciona para o Django Admin no backend
 - `/static/` para os arquivos estaticos do Django Admin
 
 Checklist do frontend:
@@ -137,4 +147,3 @@ https://bolao-production-a245.up.railway.app/admin/
 
 Se o backend direto abre mas o frontend nao, o problema esta nas variaveis
 `BACKEND_SCHEME`, `BACKEND_URL` ou `FORWARDED_PROTO` do frontend.
-

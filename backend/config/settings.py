@@ -105,9 +105,10 @@ REST_FRAMEWORK = {
     ],
 }
 
+_cors_origins = os.getenv("CORS_ALLOWED_ORIGINS")
 CORS_ALLOWED_ORIGINS = [
     item.strip()
-    for item in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    for item in (_cors_origins.split(",") if _cors_origins else CSRF_TRUSTED_ORIGINS)
     if item.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
