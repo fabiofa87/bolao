@@ -8,7 +8,6 @@ import { MatchDetailPage } from "./pages/MatchDetailPage";
 import { MatchesPage } from "./pages/MatchesPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RankingPage } from "./pages/RankingPage";
-import { ChatPage } from "./pages/ChatPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } }
@@ -31,7 +30,6 @@ export function App() {
             <Route path="/" element={<MatchesPage />} />
             <Route path="/jogos/:id" element={<MatchDetailPage />} />
             <Route path="/ranking" element={<RankingPage />} />
-            <Route path="/chat" element={<ChatPage />} />
             <Route path="/perfil" element={<ProfilePage />} />
           </Route>
         </Routes>
