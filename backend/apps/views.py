@@ -152,8 +152,7 @@ class ActivateInviteView(ApiCsrfMixin, APIView):
         serializer = InviteActivationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         invite = (
-            Invite.objects.select_for_update()
-            .select_related("pool_group")
+            Invite.objects.select_for_update(of=("self",))
             .filter(token_hash=Invite.hash_token(serializer.validated_data["token"]))
             .first()
         )

@@ -62,6 +62,29 @@ def test_invite_can_only_be_used_once():
 
 
 @pytest.mark.django_db
+def test_individual_invite_without_group_activates_user():
+    admin = User.objects.create_superuser(
+        email="admin@example.com", password="senha-segura", display_name="Admin"
+    )
+    _, token = Invite.issue(
+        email="bia@example.com", display_name="Bia", created_by=admin
+    )
+    client = APIClient(enforce_csrf_checks=True)
+    response = client.get("/api/auth/session/")
+    csrf_token = response.data["csrf_token"]
+
+    activation = client.post(
+        "/api/auth/activate/",
+        {"token": token, "display_name": "Bia", "password": "senha-segura"},
+        format="json",
+        HTTP_X_CSRFTOKEN=csrf_token,
+    )
+
+    assert activation.status_code == 201
+    assert User.objects.get(email="bia@example.com").pool_groups.filter(slug="geral").exists()
+
+
+@pytest.mark.django_db
 def test_shared_invite_can_register_multiple_users_in_group():
     admin = User.objects.create_superuser(
         email="admin@example.com", password="senha-segura", display_name="Admin"
