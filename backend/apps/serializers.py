@@ -88,6 +88,10 @@ class LoginSerializer(serializers.Serializer):
 
 class InviteActivationSerializer(serializers.Serializer):
     token = serializers.CharField()
+    email = serializers.EmailField(required=False)
     password = serializers.CharField(min_length=8, trim_whitespace=False)
     display_name = serializers.CharField(max_length=150, required=False)
 
+
+class InviteInfoSerializer(serializers.Serializer):
+    token = serializers.CharField()

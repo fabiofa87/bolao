@@ -90,7 +90,11 @@ def recalculate_points(match=None):
     return len(changed)
 
 
-def build_ranking():
+def build_ranking(user=None):
+    group_ids = []
+    if user is not None and not user.is_staff:
+        group_ids = list(user.pool_groups.values_list("id", flat=True))
+
     correct_result_counts = {}
     finished_predictions = Prediction.objects.select_related("match").filter(
         user__is_active=True,
@@ -98,6 +102,8 @@ def build_ranking():
         match__scoring_home__isnull=False,
         match__scoring_away__isnull=False,
     )
+    if group_ids:
+        finished_predictions = finished_predictions.filter(user__pool_groups__in=group_ids).distinct()
     for prediction in finished_predictions:
         match = prediction.match
         if outcome(prediction.home_score, prediction.away_score) == outcome(
@@ -119,8 +125,11 @@ def build_ranking():
         .annotate(total=Sum("points"))
         .values("total")
     )
+    users_queryset = User.objects.filter(is_active=True, is_staff=False)
+    if group_ids:
+        users_queryset = users_queryset.filter(pool_groups__in=group_ids).distinct()
     users = (
-        User.objects.filter(is_active=True, is_staff=False)
+        users_queryset
         .annotate(
             prediction_total=Coalesce(
                 Subquery(prediction_points, output_field=IntegerField()), 0
@@ -219,6 +228,10 @@ def import_initial_scores(rows, *, created_by):
             changed_fields.append("is_active")
         if changed_fields:
             user.save(update_fields=changed_fields)
+        default_group, _ = user.pool_groups.model.objects.get_or_create(
+            slug="geral", defaults={"name": "Geral"}
+        )
+        user.pool_groups.add(default_group)
         import_key = "initial:" + hashlib.sha256(row.email.encode()).hexdigest()
         PointAdjustment.objects.update_or_create(
             import_key=import_key,

@@ -2,10 +2,19 @@ from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
-from django.shortcuts import redirect, render
-from django.urls import path, reverse
+from django.shortcuts import render
+from django.urls import path
+from django.utils.text import slugify
 
-from .models import Invite, User
+from .models import Invite, PoolGroup, User
+
+
+@admin.register(PoolGroup)
+class PoolGroupAdmin(admin.ModelAdmin):
+    list_display = ["name", "slug", "is_active", "created_at"]
+    list_filter = ["is_active"]
+    search_fields = ["name", "slug"]
+    prepopulated_fields = {"slug": ("name",)}
 
 
 @admin.register(User)
@@ -13,11 +22,12 @@ class CustomUserAdmin(UserAdmin):
     ordering = ["email"]
     list_display = ["email", "display_name", "is_active", "is_staff"]
     search_fields = ["email", "display_name"]
+    filter_horizontal = ["groups", "user_permissions", "pool_groups"]
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Perfil", {"fields": ("display_name",)}),
+        ("Perfil", {"fields": ("display_name", "pool_groups")}),
         (
-            "Permissões",
+            "Permissoes",
             {
                 "fields": (
                     "is_active",
@@ -42,6 +52,7 @@ class CustomUserAdmin(UserAdmin):
                     "password2",
                     "is_active",
                     "is_staff",
+                    "pool_groups",
                 ),
             },
         ),
@@ -49,20 +60,69 @@ class CustomUserAdmin(UserAdmin):
 
 
 class InviteIssueForm(forms.Form):
-    display_name = forms.CharField(label="Nome", max_length=150)
-    email = forms.EmailField(label="E-mail")
+    kind = forms.ChoiceField(
+        label="Tipo",
+        choices=Invite.Kind.choices,
+        initial=Invite.Kind.SHARED,
+    )
+    pool_group = forms.ModelChoiceField(
+        label="Grupo existente",
+        queryset=PoolGroup.objects.filter(is_active=True),
+        required=False,
+    )
+    group_name = forms.CharField(
+        label="Criar grupo",
+        max_length=120,
+        required=False,
+        help_text="Opcional. Se preenchido, cria um novo grupo para este convite.",
+    )
+    display_name = forms.CharField(label="Nome", max_length=150, required=False)
+    email = forms.EmailField(label="E-mail", required=False)
+    max_uses = forms.IntegerField(
+        label="Limite de usos",
+        min_value=1,
+        required=False,
+        help_text="Opcional para convite compartilhado.",
+    )
+    valid_days = forms.IntegerField(label="Validade em dias", min_value=1, initial=7)
+
+    def clean(self):
+        cleaned = super().clean()
+        kind = cleaned.get("kind")
+        if kind == Invite.Kind.INDIVIDUAL and not (
+            cleaned.get("display_name") and cleaned.get("email")
+        ):
+            raise forms.ValidationError("Convite individual precisa de nome e e-mail.")
+        if kind == Invite.Kind.SHARED and not (
+            cleaned.get("pool_group") or cleaned.get("group_name")
+        ):
+            raise forms.ValidationError(
+                "Convite compartilhado precisa de um grupo existente ou novo."
+            )
+        return cleaned
 
 
 @admin.register(Invite)
 class InviteAdmin(admin.ModelAdmin):
-    list_display = ["display_name", "email", "expires_at", "used_at", "created_by"]
-    search_fields = ["display_name", "email"]
+    list_display = [
+        "kind",
+        "pool_group",
+        "display_name",
+        "email",
+        "used_count",
+        "max_uses",
+        "expires_at",
+        "used_at",
+        "created_by",
+    ]
+    list_filter = ["kind", "pool_group"]
+    search_fields = ["display_name", "email", "pool_group__name"]
     readonly_fields = [
         "token_hash",
         "created_at",
         "created_by",
+        "used_count",
         "used_at",
-        "expires_at",
     ]
     change_list_template = "admin/accounts/invite/change_list.html"
 
@@ -79,12 +139,16 @@ class InviteAdmin(admin.ModelAdmin):
         invite_url = None
         if request.method == "POST" and form.is_valid():
             _, token = Invite.issue(
+                kind=form.cleaned_data["kind"],
+                pool_group=self._resolve_pool_group(form),
                 email=form.cleaned_data["email"],
                 display_name=form.cleaned_data["display_name"],
                 created_by=request.user,
+                max_uses=form.cleaned_data["max_uses"],
+                valid_days=form.cleaned_data["valid_days"],
             )
             invite_url = f"{settings.FRONTEND_URL}/ativar?token={token}"
-            messages.success(request, "Convite criado. O link é exibido apenas agora.")
+            messages.success(request, "Convite criado. O link e exibido apenas agora.")
             form = InviteIssueForm()
         return render(
             request,
@@ -97,4 +161,14 @@ class InviteAdmin(admin.ModelAdmin):
                 "opts": self.model._meta,
             },
         )
+
+    def _resolve_pool_group(self, form):
+        group_name = form.cleaned_data.get("group_name")
+        if group_name:
+            group, _ = PoolGroup.objects.get_or_create(
+                slug=slugify(group_name),
+                defaults={"name": group_name},
+            )
+            return group
+        return form.cleaned_data.get("pool_group")
 
