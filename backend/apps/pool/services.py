@@ -142,6 +142,12 @@ def build_ranking(user=None):
         .annotate(total=Sum("points"))
         .values("total")
     )
+    adjustment_exact_hits = (
+        PointAdjustment.objects.filter(user_id=OuterRef("pk"))
+        .values("user_id")
+        .annotate(total=Sum("exact_hits"))
+        .values("total")
+    )
     users_queryset = User.objects.filter(is_active=True, is_staff=False)
     if group_ids:
         users_queryset = users_queryset.filter(pool_groups__in=group_ids).distinct()
@@ -153,6 +159,9 @@ def build_ranking(user=None):
             ),
             adjustment_total=Coalesce(
                 Subquery(adjustment_points, output_field=IntegerField()), 0
+            ),
+            adjustment_exact_hits=Coalesce(
+                Subquery(adjustment_exact_hits, output_field=IntegerField()), 0
             ),
         )
         .order_by("display_name", "id")
@@ -167,17 +176,27 @@ def build_ranking(user=None):
                 "display_name": user.display_name,
                 "prediction_points": prediction_points,
                 "adjustment_points": adjustment_points,
-                "correct_result_hits": correct_result_counts.get(user.id, 0),
+                "prediction_exact_hits": correct_result_counts.get(user.id, 0),
+                "adjustment_exact_hits": user.adjustment_exact_hits or 0,
+                "correct_result_hits": correct_result_counts.get(user.id, 0)
+                + (user.adjustment_exact_hits or 0),
                 "total_points": prediction_points + adjustment_points,
             }
         )
-    rows.sort(key=lambda row: (-row["total_points"], row["display_name"].lower()))
-    previous_points = None
+    rows.sort(
+        key=lambda row: (
+            -row["total_points"],
+            -row["correct_result_hits"],
+            row["display_name"].lower(),
+        )
+    )
+    previous_key = None
     previous_rank = 0
     for index, row in enumerate(rows, start=1):
-        if row["total_points"] != previous_points:
+        rank_key = (row["total_points"], row["correct_result_hits"])
+        if rank_key != previous_key:
             previous_rank = index
-            previous_points = row["total_points"]
+            previous_key = rank_key
         row["rank"] = previous_rank
     return rows
 
@@ -187,6 +206,7 @@ class ImportRow:
     line: int
     name: str
     points: int | None
+    exact_hits: int = 0
     email: str = ""
     error: str = ""
 
@@ -213,6 +233,12 @@ def normalize_import_header(header, index):
         "pontuacao": "pontos",
         "pontuação": "pontos",
         "score": "pontos",
+        "lt": "exact_hits",
+        "lts": "exact_hits",
+        "cravadas": "exact_hits",
+        "cravadas (qtd)": "exact_hits",
+        "placar exato": "exact_hits",
+        "placar exato (qtd)": "exact_hits",
     }
     return aliases.get(value, value)
 
@@ -248,6 +274,12 @@ def parse_initial_scores(content):
             row.points = int(normalized.get("pontos", ""))
         except ValueError:
             row.error = "Pontuacao invalida."
+        exact_hits = normalized.get("exact_hits", "")
+        if exact_hits:
+            try:
+                row.exact_hits = int(exact_hits)
+            except ValueError:
+                row.error = "LT invalido."
         if not row.name:
             row.error = "Nome e obrigatorio."
         if row.email and "@" not in row.email:
@@ -298,6 +330,7 @@ def import_initial_scores(rows, *, created_by):
             defaults={
                 "user": user,
                 "points": row.points,
+                "exact_hits": row.exact_hits,
                 "reason": "Saldo inicial importado",
                 "created_by": created_by,
             },

@@ -48,6 +48,8 @@ export type RankingRow = {
   display_name: string;
   prediction_points: number;
   adjustment_points: number;
+  prediction_exact_hits: number;
+  adjustment_exact_hits: number;
   correct_result_hits: number;
   total_points: number;
   rank: number;

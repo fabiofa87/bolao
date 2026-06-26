@@ -11,6 +11,7 @@ declare global {
 
 let csrfToken = "";
 let activeApiBaseUrl = "";
+let csrfPromise: Promise<string> | null = null;
 
 const getCookie = (name: string) => {
   const value = document.cookie
@@ -47,21 +48,56 @@ const getApiBaseUrls = () => {
 
 const buildApiUrl = (base: string, path: string) => `${base}${path}`;
 
+const withTimeout = (options: RequestInit, timeoutMs = 12000) => {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  const clear = () => window.clearTimeout(timeout);
+
+  if (options.signal) {
+    options.signal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
+
+  return {
+    options: { ...options, signal: controller.signal },
+    clear
+  };
+};
+
 const fetchWithApiFallback = async (path: string, options: RequestInit = {}) => {
   const bases = getApiBaseUrls();
   let networkError: unknown = null;
 
   for (const base of bases) {
+    const timed = withTimeout(options);
     try {
-      const response = await fetch(buildApiUrl(base, path), options);
+      const response = await fetch(buildApiUrl(base, path), timed.options);
       activeApiBaseUrl = base;
       return response;
     } catch (error) {
       networkError = error;
+    } finally {
+      timed.clear();
     }
   }
 
   throw networkError;
+};
+
+const getSignedCsrfToken = async () => {
+  if (csrfToken) return csrfToken;
+  csrfPromise ??= fetchWithApiFallback("/auth/session/", {
+    credentials: "include",
+    cache: "no-store"
+  })
+    .then((session) => session.json().catch(() => null))
+    .then((data) => {
+      csrfToken = data?.csrf_token ?? "";
+      return csrfToken;
+    })
+    .finally(() => {
+      csrfPromise = null;
+    });
+  return csrfPromise;
 };
 
 export class ApiError extends Error {
@@ -81,19 +117,13 @@ export class ApiError extends Error {
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const method = options.method?.toUpperCase() ?? "GET";
-  if (method !== "GET" && !csrfToken && !getCookie("csrftoken")) {
-    const session = await fetchWithApiFallback("/auth/session/", {
-      credentials: "include"
-    });
-    const data = await session.json().catch(() => null);
-    csrfToken = data?.csrf_token ?? "";
-  }
+  const signedToken = method !== "GET" ? await getSignedCsrfToken() : "";
   const response = await fetchWithApiFallback(path, {
     credentials: "include",
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(method !== "GET" ? { "X-CSRFToken": csrfToken || getCookie("csrftoken") } : {}),
+      ...(method !== "GET" ? { "X-CSRFToken": signedToken || getCookie("csrftoken") } : {}),
       ...options.headers
     }
   });

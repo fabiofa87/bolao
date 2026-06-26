@@ -147,6 +147,7 @@ class PointAdjustment(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="point_adjustments"
     )
     points = models.IntegerField()
+    exact_hits = models.IntegerField(default=0)
     reason = models.CharField(max_length=255)
     import_key = models.CharField(max_length=180, blank=True, unique=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

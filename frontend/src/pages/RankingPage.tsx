@@ -24,6 +24,9 @@ export function RankingPage() {
             </div>
             <span className="rounded-full bg-white/80 px-3 py-2 text-sm font-black" title="LT: acertou o resultado correto">
               LT {row.correct_result_hits}
+              {row.adjustment_exact_hits > 0 && (
+                <small className="ml-1 text-black/45">+{row.adjustment_exact_hits}</small>
+              )}
             </span>
             <span className="rounded-full bg-lime px-4 py-2 font-black">{row.total_points} pts</span>
           </div>

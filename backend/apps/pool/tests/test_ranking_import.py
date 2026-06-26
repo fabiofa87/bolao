@@ -1,8 +1,9 @@
 import pytest
 from django.contrib.auth import get_user_model
 
-from apps.pool.services import build_ranking, import_initial_scores, parse_initial_scores
 from apps.accounts.models import PoolGroup
+from apps.pool.models import PointAdjustment
+from apps.pool.services import build_ranking, import_initial_scores, parse_initial_scores
 
 User = get_user_model()
 
@@ -41,7 +42,33 @@ def test_import_accepts_windows_1252_semicolon_ranking_without_email():
     assert rows[0].name == "Gustavo Darci Martins"
     assert rows[0].email == ""
     assert rows[0].points == 121
+    assert rows[0].exact_hits == 10
     assert ranking[0]["total_points"] == 121
+    assert ranking[0]["correct_result_hits"] == 10
+
+
+@pytest.mark.django_db
+def test_exact_hits_are_tiebreaker():
+    admin = User.objects.create_superuser(
+        email="admin@example.com", password="senha-segura", display_name="Admin"
+    )
+    ana = User.objects.create_user(
+        email="ana@example.com", password="senha-segura", display_name="Ana"
+    )
+    bia = User.objects.create_user(
+        email="bia@example.com", password="senha-segura", display_name="Bia"
+    )
+    PointAdjustment.objects.create(
+        user=ana, points=10, exact_hits=1, reason="Saldo inicial", created_by=admin
+    )
+    PointAdjustment.objects.create(
+        user=bia, points=10, exact_hits=3, reason="Saldo inicial", created_by=admin
+    )
+
+    ranking = build_ranking()
+
+    assert [row["display_name"] for row in ranking] == ["Bia", "Ana"]
+    assert [row["rank"] for row in ranking] == [1, 2]
 
 
 @pytest.mark.django_db

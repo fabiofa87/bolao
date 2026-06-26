@@ -77,7 +77,7 @@ class CsvImportForm(forms.Form):
 
 @admin.register(PointAdjustment)
 class PointAdjustmentAdmin(admin.ModelAdmin):
-    list_display = ["user", "points", "reason", "created_by", "created_at"]
+    list_display = ["user", "points", "exact_hits", "reason", "created_by", "created_at"]
     search_fields = ["user__display_name", "user__email", "reason"]
     readonly_fields = ["created_at", "created_by", "import_key"]
     change_list_template = "admin/pool/pointadjustment/change_list.html"
