@@ -78,6 +78,7 @@ npm run test:e2e
 
 - `python manage.py sync_world_cup`: sincroniza agenda e resultados.
 - `python manage.py recalculate_points`: recalcula todos os palpites.
-- O serviço `scheduler` executa a sincronização a cada dez minutos.
+- O serviço `scheduler` executa a sincronização a cada cinco minutos.
 - Uma partida marcada como **ajuste manual** não é alterada pelo provedor.
 - Em mata-mata, a pontuação ignora a disputa de pênaltis.
+- A disputa de terceiro lugar usa o mesmo multiplicador da semifinal.

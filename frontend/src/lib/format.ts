@@ -5,6 +5,8 @@ const stageNames: Record<string, string> = {
   QUARTER_FINALS: "Quartas de final",
   SEMI_FINALS: "Semifinais",
   THIRD_PLACE: "Terceiro lugar",
+  THIRD_PLACE_PLAYOFF: "Terceiro lugar",
+  THIRD_PLACE_PLAY_OFF: "Terceiro lugar",
   FINAL: "Final"
 };
 
@@ -25,4 +27,3 @@ export const formatTime = (date: string) =>
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(date));
-

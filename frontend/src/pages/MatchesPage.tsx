@@ -16,11 +16,12 @@ const baseRules = [
 ];
 
 const stageMultipliers = [
-  ["Fase de grupos e terceiro lugar", "1x"],
+  ["Fase de grupos", "1x"],
   ["16 avos de final", "2x"],
   ["Oitavas de final", "3x"],
   ["Quartas de final", "4x"],
   ["Semifinal", "5x"],
+  ["Disputa de terceiro lugar", "5x"],
   ["Final", "10x"]
 ];
 

@@ -51,6 +51,9 @@ def test_scoring_matrix(prediction, guess, result, expected):
         ("LAST_16", 15),
         ("QUARTER_FINALS", 20),
         ("SEMI_FINALS", 25),
+        ("THIRD_PLACE", 25),
+        ("THIRD_PLACE_PLAYOFF", 25),
+        ("THIRD_PLACE_PLAY_OFF", 25),
         ("FINAL", 50),
     ],
 )
