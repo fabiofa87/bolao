@@ -28,8 +28,8 @@ DJANGO_DEBUG=0
 DJANGO_ALLOWED_HOSTS=bolao-production-aef5.up.railway.app,bolao-production-a245.up.railway.app
 DJANGO_CSRF_TRUSTED_ORIGINS=https://bolao-production-aef5.up.railway.app,https://bolao-production-a245.up.railway.app
 DJANGO_SECURE_COOKIES=1
-DJANGO_SESSION_COOKIE_SAMESITE=Lax
-DJANGO_CSRF_COOKIE_SAMESITE=Lax
+DJANGO_SESSION_COOKIE_SAMESITE=None
+DJANGO_CSRF_COOKIE_SAMESITE=None
 DJANGO_SECURE_SSL_REDIRECT=0
 DJANGO_SECURE_HSTS_SECONDS=0
 FRONTEND_URL=https://bolao-production-aef5.up.railway.app
@@ -40,6 +40,9 @@ O frontend chama a API por `/api`, no mesmo dominio publico do site, e o Nginx
 encaminha internamente para o backend. Assim o cookie de sessao fica como
 first-party para o navegador, o que evita falhas em Safari/iPhone, Androids com
 protecao de rastreamento e navegadores embutidos em apps.
+O app tambem tem fallback automatico para chamar o backend direto se `/api`
+falhar por erro de rede; por isso, mantenha os cookies com `SameSite=None`
+enquanto esse fallback estiver ativo.
 
 Start command:
 
