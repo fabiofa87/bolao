@@ -32,6 +32,7 @@ export type Match = {
   kickoff_at: string;
   lock_at: string;
   is_locked: boolean;
+  has_started: boolean;
   status: string;
   home_team: Team;
   away_team: Team;

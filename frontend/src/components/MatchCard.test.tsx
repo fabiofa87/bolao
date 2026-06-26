@@ -13,6 +13,7 @@ const match: Match = {
   kickoff_at: "2026-06-20T19:00:00Z",
   lock_at: "2026-06-20T18:45:00Z",
   is_locked: false,
+  has_started: false,
   status: "TIMED",
   home_team: { id: 1, name: "Brasil", short_name: "Brasil", code: "BRA", crest_url: "" },
   away_team: { id: 2, name: "Japão", short_name: "Japão", code: "JPN", crest_url: "" },

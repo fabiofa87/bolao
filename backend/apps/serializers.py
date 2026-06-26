@@ -1,7 +1,8 @@
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import serializers
 
-from .accounts.models import DailyChatMessage, PoolGroup
+from .accounts.models import DailyChatMessage
 from .pool.models import Match, Prediction, Team
 
 User = get_user_model()
@@ -11,12 +12,6 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "email", "display_name"]
-
-
-class PoolGroupSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PoolGroup
-        fields = ["id", "name", "slug"]
 
 
 class DailyChatMessageSerializer(serializers.ModelSerializer):
@@ -65,6 +60,7 @@ class MatchSerializer(serializers.ModelSerializer):
     away_team = TeamSerializer()
     lock_at = serializers.DateTimeField(read_only=True)
     is_locked = serializers.BooleanField(read_only=True)
+    has_started = serializers.SerializerMethodField()
     my_prediction = serializers.SerializerMethodField()
     predictions = serializers.SerializerMethodField()
 
@@ -79,6 +75,7 @@ class MatchSerializer(serializers.ModelSerializer):
             "kickoff_at",
             "lock_at",
             "is_locked",
+            "has_started",
             "status",
             "home_team",
             "away_team",
@@ -95,8 +92,13 @@ class MatchSerializer(serializers.ModelSerializer):
         prediction = next((p for p in obj.predictions.all() if p.user_id == user.id), None)
         return PredictionSerializer(prediction).data if prediction else None
 
+    def get_has_started(self, obj):
+        return timezone.now() >= obj.kickoff_at
+
     def get_predictions(self, obj):
-        return []
+        if timezone.now() < obj.kickoff_at:
+            return []
+        return PredictionSerializer(obj.predictions.all(), many=True).data
 
 
 class PredictionInputSerializer(serializers.Serializer):

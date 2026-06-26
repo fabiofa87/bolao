@@ -1,6 +1,6 @@
 # Bolão da Copa 2026
 
-> Produção: veja [`deploy/production.md`](deploy/production.md) para hospedar em um VPS com HTTPS automático.
+> Produção: este projeto está preparado para deploy no Railway, usando serviços separados para frontend, backend, worker e PostgreSQL.
 
 Aplicação privada de palpites para a Copa do Mundo de 2026, com Django Admin,
 API REST, React e sincronização automática dos jogos.

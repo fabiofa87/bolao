@@ -12,6 +12,14 @@ User = get_user_model()
 
 
 @pytest.mark.django_db
+def test_healthcheck_is_public():
+    client = APIClient()
+    response = client.get("/api/health/")
+    assert response.status_code == 200
+    assert response.data == {"status": "ok"}
+
+
+@pytest.mark.django_db
 def test_login_requires_csrf_token():
     User.objects.create_user(
         email="ana@example.com", password="senha-segura", display_name="Ana"
@@ -150,7 +158,7 @@ def test_shared_invite_can_register_multiple_users_in_group():
 
 
 @pytest.mark.django_db
-def test_other_predictions_are_always_hidden():
+def test_other_predictions_are_hidden_until_kickoff():
     ana = User.objects.create_user(
         email="ana@example.com", password="senha-segura", display_name="Ana"
     )
@@ -168,14 +176,18 @@ def test_other_predictions_are_always_hidden():
     client = APIClient()
     client.force_authenticate(ana)
 
-    open_response = client.get(f"/api/matches/{match.id}/")
-    match.kickoff_at = timezone.now() + timedelta(minutes=10)
+    before_lock_response = client.get(f"/api/matches/{match.id}/")
+    match.kickoff_at = timezone.now() + timedelta(minutes=3)
     match.save(update_fields=["kickoff_at"])
-    locked_response = client.get(f"/api/matches/{match.id}/")
+    locked_before_kickoff_response = client.get(f"/api/matches/{match.id}/")
+    match.kickoff_at = timezone.now() - timedelta(minutes=1)
+    match.save(update_fields=["kickoff_at"])
+    after_kickoff_response = client.get(f"/api/matches/{match.id}/")
 
-    assert open_response.data["predictions"] == []
-    assert locked_response.data["predictions"] == []
-    assert locked_response.data["my_prediction"]["home_score"] == 2
+    assert before_lock_response.data["predictions"] == []
+    assert locked_before_kickoff_response.data["predictions"] == []
+    assert locked_before_kickoff_response.data["my_prediction"]["home_score"] == 2
+    assert len(after_kickoff_response.data["predictions"]) == 2
 
 
 @pytest.mark.django_db

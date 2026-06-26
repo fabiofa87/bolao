@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.core.cache import cache
 from django.db import transaction
+from django.db.models import Prefetch, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -13,7 +14,7 @@ from rest_framework.views import APIView
 
 from .accounts.models import DailyChatMessage, Invite, PoolGroup
 from .csrf import api_csrf_is_valid, signed_csrf_token
-from .pool.models import Match
+from .pool.models import Match, Prediction
 from .pool.services import build_ranking, save_prediction
 from .serializers import (
     InviteActivationSerializer,
@@ -44,6 +45,14 @@ class ApiCsrfMixin:
                     status=status.HTTP_403_FORBIDDEN,
                 )
         return super().dispatch(request, *args, **kwargs)
+
+
+class HealthView(APIView):
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response({"status": "ok"})
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
@@ -188,10 +197,20 @@ class ActivateInviteView(ApiCsrfMixin, APIView):
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
+def prediction_prefetch_for(request):
+    now = timezone.now()
+    return Prefetch(
+        "predictions",
+        queryset=Prediction.objects.select_related("user").filter(
+            Q(user=request.user) | Q(match__kickoff_at__lte=now)
+        ),
+    )
+
+
 class MatchListView(APIView):
     def get(self, request):
         queryset = Match.objects.select_related("home_team", "away_team").prefetch_related(
-            "predictions__user"
+            prediction_prefetch_for(request)
         )
         stage = request.query_params.get("stage")
         upcoming = request.query_params.get("upcoming")
@@ -208,7 +227,7 @@ class MatchDetailView(APIView):
     def get(self, request, match_id):
         match = get_object_or_404(
             Match.objects.select_related("home_team", "away_team").prefetch_related(
-                "predictions__user"
+                prediction_prefetch_for(request)
             ),
             pk=match_id,
         )

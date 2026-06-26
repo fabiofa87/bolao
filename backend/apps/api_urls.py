@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     ActivateInviteView,
     DailyChatView,
+    HealthView,
     InviteInfoView,
     LoginView,
     LogoutView,
@@ -15,6 +16,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path("health/", HealthView.as_view()),
     path("auth/session/", SessionView.as_view()),
     path("auth/login/", LoginView.as_view()),
     path("auth/logout/", LogoutView.as_view()),
