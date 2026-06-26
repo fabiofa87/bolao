@@ -5,7 +5,8 @@ import type { RankingRow } from "../types";
 export function RankingPage() {
   const ranking = useQuery({
     queryKey: ["ranking"],
-    queryFn: () => api<RankingRow[]>("/ranking/")
+    queryFn: () => api<RankingRow[]>("/ranking/"),
+    refetchInterval: 60_000
   });
   return (
     <div className="mx-auto max-w-4xl">

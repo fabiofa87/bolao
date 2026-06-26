@@ -21,7 +21,8 @@ export function MatchDetailPage() {
   const queryClient = useQueryClient();
   const match = useQuery({
     queryKey: ["match", id],
-    queryFn: () => api<Match>(`/matches/${id}/`)
+    queryFn: () => api<Match>(`/matches/${id}/`),
+    refetchInterval: 30_000
   });
   const form = useForm<FormData>({ resolver: zodResolver(schema) });
   useEffect(() => {
@@ -41,6 +42,7 @@ export function MatchDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["match", id] });
       queryClient.invalidateQueries({ queryKey: ["matches"] });
+      queryClient.invalidateQueries({ queryKey: ["ranking"] });
     }
   });
 

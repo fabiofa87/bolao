@@ -28,7 +28,8 @@ export function MatchesPage() {
   const [activeTab, setActiveTab] = useState<ResultsTab>("upcoming");
   const matches = useQuery({
     queryKey: ["matches"],
-    queryFn: () => api<Match[]>("/matches/")
+    queryFn: () => api<Match[]>("/matches/"),
+    refetchInterval: 60_000
   });
   const groups = useMemo(() => {
     const source = (matches.data ?? []).filter(
