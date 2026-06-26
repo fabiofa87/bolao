@@ -186,19 +186,51 @@ def build_ranking(user=None):
 class ImportRow:
     line: int
     name: str
-    email: str
     points: int | None
+    email: str = ""
     error: str = ""
 
 
+def decode_csv_content(content):
+    for encoding in ("utf-8-sig", "cp1252", "latin-1"):
+        try:
+            return content.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise ValueError("Nao foi possivel ler o CSV. Salve o arquivo como UTF-8 ou Windows-1252.")
+
+
+def normalize_import_header(header, index):
+    value = (header or "").strip().lower()
+    if not value and index == 0:
+        return "nome"
+    aliases = {
+        "name": "nome",
+        "participante": "nome",
+        "jogador": "nome",
+        "e-mail": "email",
+        "mail": "email",
+        "pontuacao": "pontos",
+        "pontuação": "pontos",
+        "score": "pontos",
+    }
+    return aliases.get(value, value)
+
+
 def parse_initial_scores(content):
-    text = content.decode("utf-8-sig")
-    reader = csv.DictReader(io.StringIO(text))
-    required = {"nome", "email", "pontos"}
-    if not reader.fieldnames or not required.issubset(
-        {field.strip().lower() for field in reader.fieldnames}
-    ):
-        raise ValueError("O CSV deve conter as colunas nome,email,pontos.")
+    text = decode_csv_content(content)
+    try:
+        dialect = csv.Sniffer().sniff(text[:4096], delimiters=",;")
+    except csv.Error:
+        dialect = csv.excel
+    reader = csv.DictReader(io.StringIO(text), dialect=dialect)
+    normalized_headers = [
+        normalize_import_header(field, index)
+        for index, field in enumerate(reader.fieldnames or [])
+    ]
+    if not reader.fieldnames or not {"nome", "pontos"}.issubset(set(normalized_headers)):
+        raise ValueError("O CSV deve conter nome e pontos. A coluna email e opcional se o participante ja existir.")
+    reader.fieldnames = normalized_headers
 
     rows = []
     for line, raw in enumerate(reader, start=2):
@@ -215,9 +247,11 @@ def parse_initial_scores(content):
         try:
             row.points = int(normalized.get("pontos", ""))
         except ValueError:
-            row.error = "Pontuação inválida."
-        if not row.name or "@" not in row.email:
-            row.error = "Nome e e-mail válido são obrigatórios."
+            row.error = "Pontuacao invalida."
+        if not row.name:
+            row.error = "Nome e obrigatorio."
+        if row.email and "@" not in row.email:
+            row.error = "E-mail invalido."
         rows.append(row)
     return rows
 
@@ -228,14 +262,24 @@ def import_initial_scores(rows, *, created_by):
     for row in rows:
         if row.error:
             raise ValueError(f"Linha {row.line}: {row.error}")
-        user, _ = User.objects.get_or_create(
-            email=row.email,
-            defaults={
-                "display_name": row.name,
-                "is_active": True,
-                "username": row.email,
-            },
-        )
+        if row.email:
+            user, _ = User.objects.get_or_create(
+                email=row.email,
+                defaults={
+                    "display_name": row.name,
+                    "is_active": True,
+                    "username": row.email,
+                },
+            )
+            import_key = "initial:" + hashlib.sha256(row.email.encode()).hexdigest()
+        else:
+            users = User.objects.filter(display_name__iexact=row.name, is_staff=False)
+            if users.count() != 1:
+                raise ValueError(
+                    f"Linha {row.line}: informe email ou cadastre exatamente um participante com nome '{row.name}'."
+                )
+            user = users.get()
+            import_key = f"initial:user:{user.id}"
         changed_fields = []
         if user.display_name != row.name:
             user.display_name = row.name
@@ -249,7 +293,6 @@ def import_initial_scores(rows, *, created_by):
             slug="geral", defaults={"name": "Geral"}
         )
         user.pool_groups.add(default_group)
-        import_key = "initial:" + hashlib.sha256(row.email.encode()).hexdigest()
         PointAdjustment.objects.update_or_create(
             import_key=import_key,
             defaults={

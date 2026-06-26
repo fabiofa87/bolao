@@ -22,6 +22,29 @@ def test_import_is_idempotent_and_ties_share_rank():
 
 
 @pytest.mark.django_db
+def test_import_accepts_windows_1252_semicolon_ranking_without_email():
+    admin = User.objects.create_superuser(
+        email="admin@example.com", password="senha-segura", display_name="Admin"
+    )
+    User.objects.create_user(
+        email="gustavo@example.com", password="senha-segura", display_name="Gustavo Darci Martins"
+    )
+    content = (
+        ";Alteração de posição;Pontos;Cravadas (Qtd)\n"
+        "Gustavo Darci Martins;0;121;10\n"
+    ).encode("cp1252")
+
+    rows = parse_initial_scores(content)
+    import_initial_scores(rows, created_by=admin)
+    ranking = build_ranking()
+
+    assert rows[0].name == "Gustavo Darci Martins"
+    assert rows[0].email == ""
+    assert rows[0].points == 121
+    assert ranking[0]["total_points"] == 121
+
+
+@pytest.mark.django_db
 def test_ranking_is_filtered_by_user_groups():
     group_a = PoolGroup.objects.create(name="Grupo A", slug="grupo-a")
     group_b = PoolGroup.objects.create(name="Grupo B", slug="grupo-b")
