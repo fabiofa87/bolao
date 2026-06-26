@@ -28,11 +28,17 @@ DJANGO_DEBUG=0
 DJANGO_ALLOWED_HOSTS=bolao-production-aef5.up.railway.app,bolao-production-a245.up.railway.app
 DJANGO_CSRF_TRUSTED_ORIGINS=https://bolao-production-aef5.up.railway.app,https://bolao-production-a245.up.railway.app
 DJANGO_SECURE_COOKIES=1
+DJANGO_SESSION_COOKIE_SAMESITE=None
+DJANGO_CSRF_COOKIE_SAMESITE=None
 DJANGO_SECURE_SSL_REDIRECT=0
 DJANGO_SECURE_HSTS_SECONDS=0
 FRONTEND_URL=https://bolao-production-aef5.up.railway.app
 FOOTBALL_DATA_API_TOKEN=<token novo>
 ```
+
+As duas variaveis `SameSite=None` sao necessarias porque o frontend e o backend
+estao em subdominios diferentes no Railway. Sem isso, o navegador aceita a
+resposta de ativacao/login, mas nao guarda o cookie de sessao.
 
 Start command:
 
