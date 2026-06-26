@@ -28,17 +28,18 @@ DJANGO_DEBUG=0
 DJANGO_ALLOWED_HOSTS=bolao-production-aef5.up.railway.app,bolao-production-a245.up.railway.app
 DJANGO_CSRF_TRUSTED_ORIGINS=https://bolao-production-aef5.up.railway.app,https://bolao-production-a245.up.railway.app
 DJANGO_SECURE_COOKIES=1
-DJANGO_SESSION_COOKIE_SAMESITE=None
-DJANGO_CSRF_COOKIE_SAMESITE=None
+DJANGO_SESSION_COOKIE_SAMESITE=Lax
+DJANGO_CSRF_COOKIE_SAMESITE=Lax
 DJANGO_SECURE_SSL_REDIRECT=0
 DJANGO_SECURE_HSTS_SECONDS=0
 FRONTEND_URL=https://bolao-production-aef5.up.railway.app
 FOOTBALL_DATA_API_TOKEN=<token novo>
 ```
 
-As duas variaveis `SameSite=None` sao necessarias porque o frontend e o backend
-estao em subdominios diferentes no Railway. Sem isso, o navegador aceita a
-resposta de ativacao/login, mas nao guarda o cookie de sessao.
+O frontend chama a API por `/api`, no mesmo dominio publico do site, e o Nginx
+encaminha internamente para o backend. Assim o cookie de sessao fica como
+first-party para o navegador, o que evita falhas em Safari/iPhone, Androids com
+protecao de rastreamento e navegadores embutidos em apps.
 
 Start command:
 
@@ -84,13 +85,15 @@ Nao cadastre `PORT` manualmente no Railway; a plataforma injeta essa variavel.
 Nao coloque aspas nos valores das variaveis.
 
 O frontend tambem gera `/config.js` em runtime. Com as variaveis acima, o React
-chama a API diretamente em:
+chama a API pelo proprio dominio do frontend:
 
 ```text
-https://bolao-production-a245.up.railway.app/api
+https://bolao-production-aef5.up.railway.app/api
 ```
 
-Isso evita depender do proxy `/api` do Nginx entre dois servicos Railway.
+O `BACKEND_URL` continua sendo usado pelo Nginx para encaminhar `/api/`,
+`/admin/` e `/static/` ao backend. Nao defina `API_BASE_URL` no Railway, a menos
+que voce queira forcar propositalmente outro dominio de API.
 
 Com essas variaveis, o Nginx do frontend encaminha:
 

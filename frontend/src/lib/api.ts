@@ -25,10 +25,7 @@ const getApiBaseUrl = () => {
   const config = window.__APP_CONFIG__;
   const explicit = trimQuotes(config?.apiBaseUrl?.trim() ?? "");
   if (explicit) return explicit.replace(/\/$/, "");
-  const backendUrl = trimQuotes(config?.backendUrl?.trim() ?? "");
-  if (!backendUrl || backendUrl === "backend:8000") return "/api";
-  const scheme = trimQuotes(config?.backendScheme?.trim() || "https");
-  return `${scheme}://${backendUrl.replace(/\/$/, "")}/api`;
+  return "/api";
 };
 
 const buildApiUrl = (path: string) => {
