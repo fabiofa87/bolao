@@ -44,19 +44,23 @@ def test_scoring_matrix(prediction, guess, result, expected):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    ("stage", "expected"),
+    "stage",
     [
-        ("GROUP_STAGE", 5),
-        ("LAST_32", 10),
-        ("LAST_16", 15),
-        ("QUARTER_FINALS", 20),
-        ("SEMI_FINALS", 25),
-        ("THIRD_PLACE", 25),
-        ("THIRD_PLACE_PLAYOFF", 25),
-        ("THIRD_PLACE_PLAY_OFF", 25),
-        ("FINAL", 50),
+        "GROUP_STAGE",
+        "LAST_32",
+        "ROUND_OF_32",
+        "LAST_16",
+        "ROUND_OF_16",
+        "QUARTER_FINALS",
+        "QUARTER_FINAL",
+        "SEMI_FINALS",
+        "SEMI_FINAL",
+        "THIRD_PLACE",
+        "THIRD_PLACE_PLAYOFF",
+        "THIRD_PLACE_PLAY_OFF",
+        "FINAL",
     ],
 )
-def test_knockout_stage_multipliers(prediction, stage, expected):
+def test_all_stages_use_base_points(prediction, stage):
     prediction.match.stage = stage
-    assert calculate_points(prediction, prediction.match, ScoringRule.current()) == expected
+    assert calculate_points(prediction, prediction.match, ScoringRule.current()) == 5

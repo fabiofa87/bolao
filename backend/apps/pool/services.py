@@ -20,26 +20,6 @@ from .models import (
 
 User = get_user_model()
 
-STAGE_POINT_MULTIPLIERS = {
-    "LAST_32": 2,
-    "ROUND_OF_32": 2,
-    "LAST_16": 3,
-    "ROUND_OF_16": 3,
-    "QUARTER_FINALS": 4,
-    "QUARTER_FINAL": 4,
-    "SEMI_FINALS": 5,
-    "SEMI_FINAL": 5,
-    "THIRD_PLACE": 5,
-    "THIRD_PLACE_PLAYOFF": 5,
-    "THIRD_PLACE_PLAY_OFF": 5,
-    "FINAL": 10,
-}
-
-
-def stage_point_multiplier(stage):
-    return STAGE_POINT_MULTIPLIERS.get(stage, 1)
-
-
 def outcome(home, away):
     if home == away:
         return "DRAW"
@@ -50,23 +30,22 @@ def calculate_points(prediction, match, rule=None):
     if not match.has_result:
         return 0
     rule = rule or ScoringRule.current()
-    multiplier = stage_point_multiplier(match.stage)
     actual = (match.scoring_home, match.scoring_away)
     guessed = (prediction.home_score, prediction.away_score)
 
     if guessed == actual:
-        return rule.exact_score_points * multiplier
+        return rule.exact_score_points
     if outcome(*guessed) != outcome(*actual):
         return 0
 
     points = rule.correct_result_points
     if outcome(*actual) == "DRAW":
-        return (points + rule.wrong_draw_bonus) * multiplier
+        return points + rule.wrong_draw_bonus
 
     winner_index = 0 if actual[0] > actual[1] else 1
     if guessed[winner_index] == actual[winner_index]:
         points += rule.winner_goals_bonus
-    return points * multiplier
+    return points
 
 
 @transaction.atomic

@@ -15,16 +15,6 @@ const baseRules = [
   ["GV", "Vitoria certa com gols exatos do vencedor", "3 pontos"]
 ];
 
-const stageMultipliers = [
-  ["Fase de grupos", "1x"],
-  ["16 avos de final", "2x"],
-  ["Oitavas de final", "3x"],
-  ["Quartas de final", "4x"],
-  ["Semifinal", "5x"],
-  ["Disputa de terceiro lugar", "5x"],
-  ["Final", "10x"]
-];
-
 export function MatchesPage() {
   const [activeTab, setActiveTab] = useState<ResultsTab>("upcoming");
   const matches = useQuery({
@@ -91,11 +81,11 @@ export function MatchesPage() {
             </span>
             <h3 className="mt-1 text-3xl font-black">Pontuacao sem conversa fiada</h3>
             <p className="mt-2 max-w-2xl text-sm text-black/55">
-              Primeiro calculamos os pontos-base do palpite. Depois multiplicamos pela fase da partida.
+              A pontuacao e sempre a mesma em todas as fases da competicao.
             </p>
           </div>
 
-          <div className="mt-7 grid gap-4 lg:grid-cols-2">
+          <div className="mt-7">
             <div className="rounded-3xl bg-white/70 p-5">
               <h4 className="text-xl font-black">Pontos-base</h4>
               <div className="mt-4 space-y-3">
@@ -110,26 +100,12 @@ export function MatchesPage() {
                 ))}
               </div>
             </div>
-
-            <div className="rounded-3xl bg-white/70 p-5">
-              <h4 className="text-xl font-black">Multiplicador por fase</h4>
-              <div className="mt-4 space-y-3">
-                {stageMultipliers.map(([stage, multiplier]) => (
-                  <div key={stage} className="flex items-center justify-between gap-4 rounded-2xl bg-paper p-4">
-                    <span className="font-bold">{stage}</span>
-                    <span className="rounded-full bg-lime px-3 py-1 text-sm font-black text-ink">
-                      {multiplier}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div className="mt-5 rounded-3xl bg-field p-5 text-white">
             <strong className="block">Exemplo</strong>
             <p className="mt-1 text-sm text-white/75">
-              Placar exato na final vale 5 x 10 = 50 pontos. Resultado certo nas quartas vale 2 x 4 = 8 pontos.
+              Placar exato vale 5 pontos em qualquer fase. Resultado certo com placar errado vale 2 pontos.
             </p>
           </div>
         </section>
